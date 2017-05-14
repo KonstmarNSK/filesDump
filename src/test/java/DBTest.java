@@ -1,4 +1,8 @@
 import com.kostya.filesDump.configs.MainConfig;
+import com.kostya.filesDump.entities.User;
+import com.kostya.filesDump.repositories.interfaces.UserRepository;
+import org.hibernate.SessionFactory;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -10,39 +14,41 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
-import org.springframework.web.servlet.View;
-import org.springframework.web.servlet.ViewResolver;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.util.Map;
+import javax.transaction.Transactional;
 
 /**
- * Created by Костя on 13.05.2017.
+ * Created by Костя on 14.05.2017.
  */
-
 @RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(classes = MainConfig.class)
 @WebAppConfiguration
+@ContextConfiguration(classes = MainConfig.class)
 @ActiveProfiles("test")
-public class HomeControllerTest {
+public class DBTest {
     MockMvc mockMvc;
 
     @Autowired
-    WebApplicationContext webApplicationContext;
+    WebApplicationContext applicationContext;
+
+    @Autowired
+    UserRepository userRepository;
 
     @Before
     public void setMockMvc(){
-        mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).apply(SecurityMockMvcConfigurers.springSecurity()).build();
+        mockMvc = MockMvcBuilders.webAppContextSetup(applicationContext).apply(SecurityMockMvcConfigurers.springSecurity()).build();
     }
 
-    @Test
     @WithMockUser
-    public void test() throws Exception{
-        mockMvc.perform(MockMvcRequestBuilders.get("/")).andExpect(MockMvcResultMatchers.view().name("home"));
+    @Test
+    public void createUser(){
+        User newUser = new User();
+        newUser.setPassword("123");
+        newUser.setEmail("ccc@bbb.aaa");
+        newUser.addAuthority("ROLE_USER");
+
+        userRepository.putUser(newUser);
     }
+
 }
