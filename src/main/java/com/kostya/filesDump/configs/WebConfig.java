@@ -26,7 +26,6 @@ public class WebConfig extends WebMvcConfigurerAdapter {
     public ViewResolver getThymeleafViewResolver(SpringTemplateEngine engine){
         ThymeleafViewResolver resolver = new ThymeleafViewResolver();
         resolver.setTemplateEngine(engine);
-
         return resolver;
     }
 
@@ -34,7 +33,6 @@ public class WebConfig extends WebMvcConfigurerAdapter {
     public SpringTemplateEngine getSpringTemplateEngine(ServletContextTemplateResolver templateResolver){
         SpringTemplateEngine engine = new SpringTemplateEngine();
         engine.setTemplateResolver(templateResolver);
-
         return engine;
     }
 

@@ -4,6 +4,7 @@ import com.kostya.filesDump.entities.User;
 import com.kostya.filesDump.repositories.interfaces.UserRepository;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
+import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
@@ -11,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Repository;
 
+import javax.persistence.NoResultException;
 import javax.transaction.Transactional;
 import java.util.Collection;
 import java.util.HashSet;
@@ -29,7 +31,9 @@ public class UserRepositoryImplementation implements UserRepository{
     @Transactional
     public User getUserById(Long userId){
         Session session = sessionFactory.openSession();
-        return session.get(User.class, userId);
+        User result = session.get(User.class, userId);
+        session.close();
+        return result;
     }
 
     @Transactional
@@ -41,7 +45,16 @@ public class UserRepositoryImplementation implements UserRepository{
         Query query = session.createQuery(hql);
         query.setParameter("user_email",email);
 
-        return (User)query.getSingleResult();
+        try {
+            User result = (User) query.getSingleResult();
+            session.close();
+            return result;
+
+        }catch (NoResultException e){
+            session.close();
+            return null;
+        }
+
     }
 
     @Override
@@ -91,10 +104,12 @@ public class UserRepositoryImplementation implements UserRepository{
         };
     }
 
-    @Transactional
     public void putUser(User user){
         Session session = sessionFactory.openSession();
+        Transaction transaction = session.beginTransaction();
         session.save(user);
+        transaction.commit();
+        session.close();
     }
 
 

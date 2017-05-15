@@ -9,5 +9,5 @@ create table authorities(
 	id int not null primary key,
     auth varchar(50) not null,
     
-    user_id int not null
+    user_id int
 );

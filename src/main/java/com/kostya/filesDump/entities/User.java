@@ -23,8 +23,8 @@ public class User implements Serializable{
     @Column(name = "password")
     private String password;
 
-    @OneToMany(cascade = CascadeType.ALL)
-    @JoinColumn(name = "user_id")
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinColumn(name = "user_id" )
     private Set<Authority> authorities;
 
     public String getEmail() {
