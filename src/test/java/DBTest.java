@@ -1,8 +1,6 @@
 import com.kostya.filesDump.configs.MainConfig;
 import com.kostya.filesDump.entities.User;
 import com.kostya.filesDump.repositories.interfaces.UserRepository;
-import org.hibernate.SessionFactory;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -16,8 +14,6 @@ import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
-
-import javax.transaction.Transactional;
 
 /**
  * Created by Костя on 14.05.2017.
@@ -49,6 +45,9 @@ public class DBTest {
         newUser.addAuthority("ROLE_USER");
 
         userRepository.putUser(newUser);
+
+        User user = userRepository.getUserByEmail("ccc@bbb.aaa");
+        org.junit.Assert.assertNotNull(user);
     }
 
 }

@@ -8,5 +8,6 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @ComponentScan(basePackageClasses = MainConfig.class)
+@ComponentScan(basePackages = "com.kostya.filesDump.utils")
 public class MainConfig {
 }

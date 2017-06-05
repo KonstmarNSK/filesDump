@@ -2,6 +2,7 @@ package com.kostya.filesDump.controllers;
 
 import com.kostya.filesDump.entities.User;
 import com.kostya.filesDump.repositories.interfaces.UserRepository;
+import com.kostya.filesDump.utils.FileResolver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -18,6 +19,9 @@ import org.springframework.web.bind.annotation.*;
 public class RegistrationController {
     @Autowired
     UserRepository userRepository;
+
+    @Autowired
+    FileResolver fileResolver;
 
     @GetMapping
     public String getRegisterPageName(){
@@ -38,8 +42,9 @@ public class RegistrationController {
         user.addAuthority("ROLE_USER");
         userRepository.putUser(user);
         Authentication auth = new UsernamePasswordAuthenticationToken(userRepository.loadUserByUsername(user.getEmail()), user.getPassword(), user.getAuthorities());
-
         SecurityContextHolder.getContext().setAuthentication(auth);
+
+        fileResolver.createUserRootDirectory(user.getEmail());
 
         return "redirect:/";
     }
