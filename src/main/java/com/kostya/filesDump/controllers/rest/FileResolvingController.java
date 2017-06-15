@@ -16,7 +16,17 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Created by Костя on 01.06.2017.
@@ -41,7 +51,6 @@ public class FileResolvingController {
     // TODO: 05.06.2017 find out something about urlencoded values 
     // TODO: 05.06.2017 add delete actions 
     // TODO: 05.06.2017 make server answer more informative
-    // TODO: 05.06.2017 add link to register page
     // TODO: 05.06.2017 add web interface (upload, download, delete, getFilesList etc)
     // TODO: 05.06.2017 fix tests (they must not depend on filesystem)
 
@@ -76,9 +85,29 @@ public class FileResolvingController {
         multipartFile.transferTo(requestedFile);
     }
 
+    private class FileInfo{
+        public final String filename;
+        public final Date createTime;
+        public final boolean isDirectory;
+
+        public FileInfo(File file){
+            this.filename = file.getName();
+            Path path = Paths.get(file.getAbsolutePath());
+            isDirectory = file.isDirectory();
+
+            BasicFileAttributes view = null;
+            try {
+                view = Files.getFileAttributeView(path, BasicFileAttributeView.class).readAttributes();
+            }catch (IOException e){
+                throw new RuntimeException(e);
+            }
+            createTime = new Date(view.creationTime().toMillis());
+        }
+    }
+
     @GetMapping("/rest/userDirectory/{userPassword}/{userEmail}/**")
     @ResponseBody
-    public String[] getDirectoryFilesList(HttpServletRequest request, @PathVariable("userPassword") String userPassword, @PathVariable("userEmail") String username) throws IOException{
+    public List<FileInfo> getDirectoryFilesList(HttpServletRequest request, @PathVariable("userPassword") String userPassword, @PathVariable("userEmail") String username) throws IOException{
         if(!isValidUserCredentials(username, userPassword)){
             return null;
         }
@@ -87,7 +116,11 @@ public class FileResolvingController {
         File requestedFile = fileResolver.getFile(relationalFilePath);
 
         if(requestedFile.isDirectory()){
-            return requestedFile.list();
+            File[] files = requestedFile.listFiles();
+            if(files == null){
+                return null;
+            }
+            return Arrays.stream(files).map(FileInfo::new).collect(Collectors.toList());
         }else{
             return null;
         }

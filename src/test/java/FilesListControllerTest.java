@@ -29,7 +29,7 @@ import java.util.Map;
 @ContextConfiguration(classes = MainConfig.class)
 @WebAppConfiguration
 @ActiveProfiles("test")
-public class HomeControllerTest {
+public class FilesListControllerTest {
     MockMvc mockMvc;
 
     @Autowired
@@ -43,6 +43,7 @@ public class HomeControllerTest {
     @Test
     @WithMockUser
     public void test() throws Exception{
-        mockMvc.perform(MockMvcRequestBuilders.get("/")).andExpect(MockMvcResultMatchers.view().name("home"));
+        mockMvc.perform(MockMvcRequestBuilders.get("/")).andExpect(MockMvcResultMatchers.view().name("viewFiles"));
+
     }
 }

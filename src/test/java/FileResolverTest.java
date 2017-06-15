@@ -49,6 +49,6 @@ public class FileResolverTest {
     @WithMockUser
     public void testExistingDirectory() throws Exception{
         mockMvc.perform(MockMvcRequestBuilders.get("/rest/userDirectory/123/aaa").servletPath("/rest/userDirectory/123/aaa"))
-                .andExpect(MockMvcResultMatchers.content().string("[\"1.txt\",\"2.txt\",\"bbb\"]"));
+                .andExpect(MockMvcResultMatchers.content().string("[{\"filename\":\"1.txt\",\"createTime\":1496655576448,\"isDirectory\":false},{\"filename\":\"2.txt\",\"createTime\":1496655576447,\"isDirectory\":false},{\"filename\":\"bbb\",\"createTime\":1495798001550,\"isDirectory\":true}]"));
     }
 }

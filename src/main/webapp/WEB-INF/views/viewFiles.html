@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+	<link rel="stylesheet" href="../resources/bootstrap/css/bootstrap.css" data-th-href="@{/resources/bootstrap/css/bootstrap.css}" type="text/css" />
+    <title>auth</title>
+	
+	<script th:inline="javascript">
+		/*<![CDATA[*/
+		function getCredentials(){
+			var credentials	= new Object();
+			credentials.email = /*[[${email}]]*/ 'a@b.c';
+			credentials.password = /*[[${password}]]*/ '123';
+			return credentials;
+		}
+
+		function getContextPath(){
+			return /*[[${contextPath}]]*/ "/filesDump";
+		}
+		/*]]>*/
+	</script>
+	
+	<script>
+		/*
+			returns list of FileInfo objects
+			FileInfoObject: {
+				filename : string
+				createTime : Date
+				isDirectory : string
+			}			
+		*/
+		function getFilesListFromServer(callback){
+			var xmlHttpRequest = new XMLHttpRequest();
+			var credentials = getCredentials();			
+			var filesListContainer = document.getElementById("filesListContainer");
+			var activeUserDirectory = filesListContainer.getAttribute("activeuserdirectory");
+			var filesList;
+
+			var path = getContextPath()+"/rest/userDirectory/"+credentials.password+"/"+credentials.email+"/"+activeUserDirectory;
+			xmlHttpRequest.open("GET", path, true);
+			xmlHttpRequest.onreadystatechange = function(){
+				if(xmlHttpRequest.readyState === 4){
+					var response = xmlHttpRequest.responseText;
+					filesList = JSON.parse(response, function(key, value){
+						if(key == "createTime"){
+							return new Date(value);
+						}
+						if(key == "isDirectory"){
+							value = ""+value;
+						}
+						return value;
+					});					
+
+					if(filesList != undefined){
+						callback(filesList);
+					}
+				}
+			}
+			xmlHttpRequest.send(null);
+			
+		}
+
+		function getChildNodeByClassName(node, className){
+			for(var i=0; i<node.childNodes.length; i++){
+				var currentChild = node.childNodes[i];
+				if((currentChild.getAttribute != undefined) && (currentChild.getAttribute("class") == className)){
+					return node.childNodes[i];
+				}
+			}
+			return null;
+		}
+
+
+
+		/* 
+			returns list of FileInfoDocumentNode objects
+			FileInfoDocumentNodeObject: {
+				filename : string
+				createTime : Date
+				isDirectory : string
+				fileInfoNode : object;
+			}
+		*/
+		function getLocalFilesList(){
+			var filesListContainer = document.getElementById("filesListContainer");
+			var localRawFilesList = filesListContainer.childNodes;
+			var fileInfoElements = new Array();
+
+			for(var i=0; i<localRawFilesList.length; i++){
+				var currentFileInfoElement = new Object();
+				var fileInfoNode = getChildNodeByClassName(localRawFilesList[i], "fileInfo");
+				if(fileInfoNode == null){
+					continue;
+				}
+				
+				currentFileInfoElement.createTime = fileInfoNode.getAttribute("createtime")
+				currentFileInfoElement.filename = fileInfoNode.getAttribute("filename");
+				currentFileInfoElement.isDirectory = ""+fileInfoNode.getAttribute("isdirectory");
+				currentFileInfoElement.fileInfoNode = fileInfoNode;
+
+				fileInfoElements.push(currentFileInfoElement);
+			}
+			return fileInfoElements;
+		}
+
+		function showFileInfo(filesListContainer, fileInfo){
+				var divNode = document.createElement("div");
+				divNode.style.display = "inline-block";
+				
+				var fileInfoNode = document.createElement("div");
+				fileInfoNode.setAttribute("class", "fileInfo");
+				fileInfoNode.setAttribute("filename", fileInfo.filename);
+				fileInfoNode.setAttribute("createtime", fileInfo.createTime);
+				fileInfoNode.setAttribute("isdirectory", fileInfo.isDirectory);
+
+				divNode.appendChild(fileInfoNode);
+				filesListContainer.appendChild(divNode);
+		}	
+
+		function updateFilesList(){
+			//oops
+			getFilesListFromServer(function(filesListFromServer){
+				var localFilesList = getLocalFilesList();
+				var filesListContainer = document.getElementById("filesListContainer");
+
+				function contains(arr, value){
+					for(var i=0; i<arr.length; i++){
+						if((arr[i].filename == value.filename) && (arr[i].createTime == value.createTime) && (arr[i].isDirectory == value.isDirectory)){
+							return true;
+						}
+					}
+					return false;
+				}
+
+				//removing not existing files
+				localFilesList.forEach(function(fileInfoDocumentNode){
+					if(!contains(filesListFromServer, fileInfoDocumentNode)){
+						filesListContainer.removeChild(fileInfoDocumentNode.fileInfoNode.parentNode);
+						delete fileInfoDocumentNode;
+					}
+				});
+
+				//put newly uploaded files
+				filesListFromServer.forEach(function(fileInfo){
+					if(!contains(localFilesList, fileInfo)){
+						showFileInfo(filesListContainer, fileInfo);
+					}				
+				});
+
+				setTimeout(updateFilesList, 5000);
+			});
+			
+		}
+	</script>
+
+	<style type="text/css">
+		.fileInfo{
+			display: none;
+		}
+	</style>
+	
+</head>
+<body onload="updateFilesList();">
+	<div class="container">
+		<div class="row">
+			<div class="col-md-8"> 
+				<div class="well" id="filesListContainer" activeUserDirectory="">
+					<div style="display:inline-block;" id="someId">
+						<div class="fileInfo" filename="" createTime="" isDirectory=""></div>
+					</div>
+				</div>
+			</div>
+			
+			<div class="col-md-4">
+			</div>
+	  	</div>
+	  </div>
+</body>
+</html>

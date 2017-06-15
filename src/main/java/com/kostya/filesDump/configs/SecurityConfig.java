@@ -21,7 +21,7 @@ import org.springframework.security.web.context.SecurityContextPersistenceFilter
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.authorizeRequests().antMatchers("/resources/**", "/register").permitAll()
+        http.authorizeRequests().antMatchers("/resources/**", "/register", "/rest/**").permitAll()
                 .anyRequest().hasRole("USER").and()
                 .formLogin().loginPage("/auth").passwordParameter("password").usernameParameter("email").permitAll();
     }
