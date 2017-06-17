@@ -17,23 +17,36 @@
 		function getContextPath(){
 			return /*[[${contextPath}]]*/ "/filesDump";
 		}
+
 		/*]]>*/
 	</script>
 	
 	<script>
+	function getActiveUserDirectory(){
+		return document.getElementById("activeUserDirectoryInput").getAttribute("activeuserdirectory");
+	}
+
+	function setActiveUserDirectory(newActiveDirectory){
+		document.getElementById("activeUserDirectoryInput").setAttribute("activeuserdirectory", newActiveDirectory);
+	}
+
 		/*
 			returns list of FileInfo objects
 			FileInfoObject: {
 				filename : string
 				createTime : Date
 				isDirectory : string
+
+				fileSize : int (in bytes)
+				fileType : string
+				lastModified : Date
 			}			
 		*/
 		function getFilesListFromServer(callback){
 			var xmlHttpRequest = new XMLHttpRequest();
 			var credentials = getCredentials();			
 			var filesListContainer = document.getElementById("filesListContainer");
-			var activeUserDirectory = filesListContainer.getAttribute("activeuserdirectory");
+			var activeUserDirectory = getActiveUserDirectory();
 			var filesList;
 
 			var path = getContextPath()+"/rest/userDirectory/"+credentials.password+"/"+credentials.email+"/"+activeUserDirectory;
@@ -46,7 +59,10 @@
 							return new Date(value);
 						}
 						if(key == "isDirectory"){
-							value = ""+value;
+							return ""+value;
+						}
+						if(key == "lastModified"){
+							return new Date(value);
 						}
 						return value;
 					});					
@@ -71,6 +87,66 @@
 		}
 
 
+		function showFileInfoBlock(fileInfo){
+			var fileInfoBlock = document.getElementById("fileInfoBlock");
+			fileInfoBlock.style.display = "block";
+			var credentials = getCredentials();
+			var activeUserDirectory = getActiveUserDirectory();
+
+			document.getElementById("fileInfoBlock_fileNameField").innerHTML = fileInfo.filename;
+			document.getElementById("fileInfoBlock_fileSizeField").innerHTML = fileInfo.fileSize;
+			if(fileInfo.isDirectory == "true"){
+				document.getElementById("fileInfoBlock_fileTypeField").innerHTML = "Directory";
+			}else{
+				document.getElementById("fileInfoBlock_fileTypeField").innerHTML = fileInfo.fileType;
+			}
+
+			var linkToFile = document.createElement("a");
+			var fileDownloadButton = document.getElementById("fileInfoBlock_downloadButton");
+			linkToFile.setAttribute("href", getContextPath()+"/rest/userFile/"+credentials.password+"/"+credentials.email+"/"+activeUserDirectory+"/"+fileInfo.filename);
+			fileDownloadButton.parentNode.appendChild(linkToFile);
+			linkToFile.appendChild(fileDownloadButton);
+
+			document.getElementById("fileInfoBlock_creationTimeField").innerHTML = fileInfo.createTime;
+			document.getElementById("fileInfoBlock_lastModifiedField").innerHTML = fileInfo.lastModified;
+		}
+
+		function hideFileInfoBlock(){
+			var fileInfoBlock = document.getElementById("fileInfoBlock");
+			fileInfoBlock.style.display = "none";
+		}
+
+		function getSelectionFunction(){
+			var oldActiveItem = undefined;
+
+			return function(newActiveItem, newFileInfo){
+				function unselectOldItem(){
+					oldActiveItem.style.margin = "5px";
+					hideFileInfoBlock();					
+					oldActiveItem.className = oldActiveItemClasses.filter(function(className){return className != "selected"}).join(" ");
+				}
+
+				if(oldActiveItem != undefined){
+					var oldActiveItemClasses = oldActiveItem.className.split(" ");
+
+					//if was already selected, unselect
+					if((newActiveItem == oldActiveItem) && (oldActiveItemClasses.find(function(className){return className == "selected"}) != undefined)){						
+						unselectOldItem();
+						return;
+					}
+					unselectOldItem();
+				}
+
+				newActiveItem.style.margin = "3px";
+				showFileInfoBlock(newFileInfo);
+				newActiveItem.className += " selected";
+				oldActiveItem = newActiveItem;
+			}
+		}
+
+		var selectItemFunction = getSelectionFunction();
+
+
 
 		/* 
 			returns list of FileInfoDocumentNode objects
@@ -79,6 +155,9 @@
 				createTime : Date
 				isDirectory : string
 				fileInfoNode : object;
+				fileSize : int (in bytes)
+				fileType : string
+				lastModified : Date
 			}
 		*/
 		function getLocalFilesList(){
@@ -95,7 +174,10 @@
 				
 				currentFileInfoElement.createTime = fileInfoNode.getAttribute("createtime")
 				currentFileInfoElement.filename = fileInfoNode.getAttribute("filename");
-				currentFileInfoElement.isDirectory = ""+fileInfoNode.getAttribute("isdirectory");
+				currentFileInfoElement.isDirectory = fileInfoNode.getAttribute("isdirectory");
+				currentFileInfoElement.fileSize = parseInt(fileInfoNode.getAttribute("filesize"), 10);
+				currentFileInfoElement.fileType = fileInfoNode.getAttribute("filetype");
+				currentFileInfoElement.lastModified = fileInfoNode.getAttribute("lastmodified");
 				currentFileInfoElement.fileInfoNode = fileInfoNode;
 
 				fileInfoElements.push(currentFileInfoElement);
@@ -106,26 +188,54 @@
 		function showFileInfo(filesListContainer, fileInfo){
 				var divNode = document.createElement("div");
 				divNode.style.display = "inline-block";
+				divNode.style.margin = "10px";
+				divNode.style.padding= "5px";
+				divNode.onclick = function(){
+					selectItemFunction(divNode, fileInfo);
+				};
 				
 				var fileInfoNode = document.createElement("div");
 				fileInfoNode.setAttribute("class", "fileInfo");
 				fileInfoNode.setAttribute("filename", fileInfo.filename);
 				fileInfoNode.setAttribute("createtime", fileInfo.createTime);
 				fileInfoNode.setAttribute("isdirectory", fileInfo.isDirectory);
+				fileInfoNode.setAttribute("filesize", fileInfo.fileSize);
+				fileInfoNode.setAttribute("lastmodified", fileInfo.lastModified);
+				fileInfoNode.setAttribute("filetype", fileInfo.fileType);
 
+				var fileIcon = document.createElement("div");
+				if(fileInfo.isDirectory == "true"){
+					fileIcon.ondblclick = function(){showChildFolder(fileInfo.filename);}
+					fileIcon.setAttribute("class", "glyphicon glyphicon-folder-open");
+				}else{
+					fileIcon.setAttribute("class", "glyphicon glyphicon-file");
+				}
+				fileIcon.style["font-size"] = "50px";
+
+
+				var fileNameLabel = document.createElement("p");
+				fileNameLabel.innerHTML = fileInfo.filename;
+				fileNameLabel.setAttribute("width", "100px");
+
+
+				divNode.appendChild(fileIcon);
+				divNode.appendChild(fileNameLabel);
 				divNode.appendChild(fileInfoNode);
 				filesListContainer.appendChild(divNode);
 		}	
+
+		var updateFilesListTimeout;
 
 		function updateFilesList(){
 			//oops
 			getFilesListFromServer(function(filesListFromServer){
 				var localFilesList = getLocalFilesList();
 				var filesListContainer = document.getElementById("filesListContainer");
+				var fileInfoBlock_fileNameField = document.getElementById("fileInfoBlock_fileNameField");
 
 				function contains(arr, value){
 					for(var i=0; i<arr.length; i++){
-						if((arr[i].filename == value.filename) && (arr[i].createTime == value.createTime) && (arr[i].isDirectory == value.isDirectory)){
+						if((arr[i].filename == value.filename) && (arr[i].createTime == value.createTime) && (arr[i].lastModified == value.lastModified) && (arr[i].isDirectory == value.isDirectory)){
 							return true;
 						}
 					}
@@ -136,6 +246,9 @@
 				localFilesList.forEach(function(fileInfoDocumentNode){
 					if(!contains(filesListFromServer, fileInfoDocumentNode)){
 						filesListContainer.removeChild(fileInfoDocumentNode.fileInfoNode.parentNode);
+						if(fileInfoBlock_fileNameField.innerHTML == fileInfoDocumentNode.filename){
+							hideFileInfoBlock();
+						}
 						delete fileInfoDocumentNode;
 					}
 				});
@@ -147,31 +260,142 @@
 					}				
 				});
 
-				setTimeout(updateFilesList, 5000);
+				updateFilesListTimeout = setTimeout(updateFilesList, 5000);
 			});
 			
 		}
+
+		function showParentFolder(){
+			var activeUserDirectory = getActiveUserDirectory();
+			console.log(activeUserDirectory);
+
+			if(activeUserDirectory == ""){
+				//already at root
+				return;
+			}
+
+			var lastSeparatorIndex = activeUserDirectory.lastIndexOf("/");
+			console.log(lastSeparatorIndex);
+
+			if((activeUserDirectory.length != 0) && (lastSeparatorIndex == -1)){
+				activeUserDirectory = "";
+			}else{
+				activeUserDirectory = activeUserDirectory.substring(0, activeUserDirectory.length-1);
+				lastSeparatorIndex = activeUserDirectory.lastIndexOf("/");
+				activeUserDirectory = activeUserDirectory.substring(0, lastSeparatorIndex+1);
+			}
+			console.log(activeUserDirectory);
+			setActiveUserDirectory(activeUserDirectory);
+
+			clearTimeout(updateFilesListTimeout);
+			updateFilesList();
+		}
+
+		function showChildFolder(childDirectoryName){
+			setActiveUserDirectory(getActiveUserDirectory()+childDirectoryName+"/");
+			clearTimeout(updateFilesListTimeout);
+			updateFilesList();	
+		}
+
+		function init(){
+			document.getElementById("upFolderButton").setAttribute("onclick", "showParentFolder()");
+		}
+
 	</script>
 
 	<style type="text/css">
 		.fileInfo{
 			display: none;
 		}
+
+		.selected{
+			border: 2px solid #000099;
+    		border-radius: 5px;
+		}
 	</style>
 	
 </head>
-<body onload="updateFilesList();">
+<body onload="updateFilesList(); init();">
 	<div class="container">
 		<div class="row">
 			<div class="col-md-8"> 
-				<div class="well" id="filesListContainer" activeUserDirectory="">
-					<div style="display:inline-block;" id="someId">
-						<div class="fileInfo" filename="" createTime="" isDirectory=""></div>
+
+				<div class="input-group">
+					<span class="input-group-addon">Current directory</span>
+					<p id="activeUserDirectoryInput" activeUserDirectory="" class="form-control">
+					<div class="input-group-btn">
+						<button class="btn btn-default" id="upFolderButton" >
+							Up
+						</button>
 					</div>
+				</div>
+
+				<br />
+
+				<div class="well" id="filesListContainer" activeUserDirectory="" style="max-height: 70vh; overflow-y: scroll;">
+					
 				</div>
 			</div>
 			
 			<div class="col-md-4">
+				<div id="fileInfoBlock" style="display:none;">
+
+					<p id="fileInfoBlock_fileNameField"></p>
+
+					<div class="row" id="fileInfoBlock_fileTypeBlock">
+						<div class="col-md-4">
+							<p>File type:</p>
+						</div>
+
+						<div class="col-md-8">
+							<p id="fileInfoBlock_fileTypeField"></p>
+						</div>
+					</div>
+
+					<div class="row" id="fileInfoBlock_fileSizeBlock">
+						<div class="col-md-4">
+							<p>File size:</p>
+						</div>
+
+						<div class="col-md-8">
+							<p id="fileInfoBlock_fileSizeField"></p>
+						</div>
+					</div>
+
+					<div class="row" id="fileInfoBlock_creationTimeBlock">
+						<div class="col-md-4">
+							<p>Created:</p>
+						</div>
+
+						<div class="col-md-8">
+							<p  id="fileInfoBlock_creationTimeField"></p>
+						</div>
+					</div>
+
+					<div class="row" id="fileInfoBlock_lastModifiedBlock">
+						<div class="col-md-4">
+							<p>Last modified:</p>
+						</div>
+
+						<div class="col-md-8">
+							<p id="fileInfoBlock_lastModifiedField"></p>
+						</div>
+					</div>
+
+					<div class="row" id="fileInfoBlock_actionButtons">
+						<div class="col-md-4">
+							<input  id="fileInfoBlock_deleteButton">
+						</div>
+
+						<div class="col-md-4">
+							<input  id="fileInfoBlock_shareButton">
+						</div>
+
+						<div class="col-md-4">
+							<button id="fileInfoBlock_downloadButton" class="btn btn-primary btn-lg">Download</button>
+						</div>
+					</div>
+				</div>
 			</div>
 	  	</div>
 	  </div>

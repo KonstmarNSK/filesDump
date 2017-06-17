@@ -22,6 +22,7 @@ import java.nio.file.Paths;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -43,13 +44,7 @@ public class FileResolvingController {
     @Autowired
     ServletContext servletContext;
 
-    @ExceptionHandler(IOException.class)
-    public String returnNotFoundPage(){
-        return "notFound";
-    }
-
-    // TODO: 05.06.2017 find out something about urlencoded values 
-    // TODO: 05.06.2017 add delete actions 
+    // TODO: 05.06.2017 find out something about urlencoded values
     // TODO: 05.06.2017 make server answer more informative
     // TODO: 05.06.2017 add web interface (upload, download, delete, getFilesList etc)
     // TODO: 05.06.2017 fix tests (they must not depend on filesystem)
@@ -68,6 +63,18 @@ public class FileResolvingController {
         }
     }
 
+    @DeleteMapping("/rest/userFile/{userPassword}/{userEmail}/**")
+    public  void deleteFile(HttpServletRequest request, @PathVariable("userPassword") String userPassword, @PathVariable("userEmail") String username){
+        if(!isValidUserCredentials(username, userPassword)){
+            return;
+        }
+
+        String relationalFilePath = getRelationalResourcePath(request, "/rest/userFile/"+userPassword);
+        File requestedFile = fileResolver.getFile(relationalFilePath);
+
+        requestedFile.delete();
+    }
+
     @PostMapping("/rest/userFile/{userPassword}/{userEmail}/**")
     public void postFile(HttpServletRequest request, @PathVariable("userPassword") String userPassword, @PathVariable("userEmail") String username, @RequestParam("file") MultipartFile multipartFile) throws IOException{
         if(!isValidUserCredentials(username, userPassword)){
@@ -77,23 +84,54 @@ public class FileResolvingController {
         String relationalFilePath = getRelationalResourcePath(request, "/rest/userFile/"+userPassword);
         File requestedFile = fileResolver.getFile(relationalFilePath);
 
-
         if(!requestedFile.getParentFile().exists()){
             return;
+        }
+
+        if(!requestedFile.exists()){
+            requestedFile.createNewFile();
         }
 
         multipartFile.transferTo(requestedFile);
     }
 
+    private long getDirectorySize(File file){
+        long result = 0L;
+        try{
+            result = Arrays.stream(file.listFiles()).reduce(result, (partialSize, anotherFile)->partialSize + ((anotherFile.isDirectory())?getDirectorySize(anotherFile):anotherFile.length()), (a, b)->a+b);
+        }catch (NullPointerException e){
+            //nop, it's ok; returning 0: directory is empty
+        }
+
+        return result;
+    }
+
     private class FileInfo{
         public final String filename;
-        public final Date createTime;
+        public final long createTime;
+        public final long lastModified;
         public final boolean isDirectory;
+        public final long fileSize;
+        public final String fileType;
 
         public FileInfo(File file){
+            String mimeType = servletContext.getMimeType(file.getAbsolutePath());
+            if(mimeType == null){
+                fileType = "unknown";
+            }else {
+                fileType = mimeType;
+            }
+
+            if(file.isDirectory()){
+                isDirectory = true;
+                fileSize = getDirectorySize(file);
+            }else {
+                this.fileSize = file.length();
+                isDirectory = false;
+            }
+            this.lastModified = file.lastModified();
             this.filename = file.getName();
             Path path = Paths.get(file.getAbsolutePath());
-            isDirectory = file.isDirectory();
 
             BasicFileAttributes view = null;
             try {
@@ -101,8 +139,20 @@ public class FileResolvingController {
             }catch (IOException e){
                 throw new RuntimeException(e);
             }
-            createTime = new Date(view.creationTime().toMillis());
+            createTime = view.creationTime().toMillis();
         }
+    }
+
+    @DeleteMapping("/rest/userDirectory/{userPassword}/{userEmail}/**")
+    public  void deleteDirectory(HttpServletRequest request, @PathVariable("userPassword") String userPassword, @PathVariable("userEmail") String username){
+        if(!isValidUserCredentials(username, userPassword)){
+            return;
+        }
+
+        String relationalFilePath = getRelationalResourcePath(request, "/rest/userFile/"+userPassword);
+        File requestedFile = fileResolver.getFile(relationalFilePath);
+
+        requestedFile.delete();
     }
 
     @GetMapping("/rest/userDirectory/{userPassword}/{userEmail}/**")
@@ -118,7 +168,7 @@ public class FileResolvingController {
         if(requestedFile.isDirectory()){
             File[] files = requestedFile.listFiles();
             if(files == null){
-                return null;
+                return new ArrayList<FileInfo>(0);
             }
             return Arrays.stream(files).map(FileInfo::new).collect(Collectors.toList());
         }else{
