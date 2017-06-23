@@ -46,4 +46,5 @@ public class FilesListControllerTest {
         mockMvc.perform(MockMvcRequestBuilders.get("/")).andExpect(MockMvcResultMatchers.view().name("viewFiles"));
 
     }
+
 }

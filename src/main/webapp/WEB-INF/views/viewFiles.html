@@ -18,16 +18,25 @@
 			return /*[[${contextPath}]]*/ "/filesDump";
 		}
 
+		function getCsrfToken(){
+			var csrfData = new Object();
+
+			csrfData.parameterName = /*[[${_csrf.parameterName}]]*/
+			csrfData.token = /*[[${_csrf.token}]]*/
+
+			return csrfData;
+		}
+
 		/*]]>*/
 	</script>
 	
 	<script>
 	function getActiveUserDirectory(){
-		return document.getElementById("activeUserDirectoryInput").getAttribute("activeuserdirectory");
+		return document.getElementById("activeUserDirectoryInput").innerHTML;
 	}
 
 	function setActiveUserDirectory(newActiveDirectory){
-		document.getElementById("activeUserDirectoryInput").setAttribute("activeuserdirectory", newActiveDirectory);
+		document.getElementById("activeUserDirectoryInput").innerHTML = newActiveDirectory;
 	}
 
 		/*
@@ -101,9 +110,18 @@
 				document.getElementById("fileInfoBlock_fileTypeField").innerHTML = fileInfo.fileType;
 			}
 
+			var deleteButton = document.getElementById("fileInfoBlock_deleteButton");
+			deleteButton.onclick=function(){
+				if(fileInfo.isDirectory == "false"){
+					deleteFile(fileInfo.filename);
+				}else{
+					deleteDirectory(fileInfo.filename);
+				}
+			}
+
 			var linkToFile = document.createElement("a");
 			var fileDownloadButton = document.getElementById("fileInfoBlock_downloadButton");
-			linkToFile.setAttribute("href", getContextPath()+"/rest/userFile/"+credentials.password+"/"+credentials.email+"/"+activeUserDirectory+"/"+fileInfo.filename);
+			linkToFile.setAttribute("href", getContextPath()+"/rest/userFile/"+credentials.password+"/"+credentials.email+"/"+activeUserDirectory+fileInfo.filename);
 			fileDownloadButton.parentNode.appendChild(linkToFile);
 			linkToFile.appendChild(fileDownloadButton);
 
@@ -226,6 +244,11 @@
 
 		var updateFilesListTimeout;
 
+		function forceUpdate(){
+			clearTimeout(updateFilesListTimeout);
+			updateFilesList();
+		}
+
 		function updateFilesList(){
 			//oops
 			getFilesListFromServer(function(filesListFromServer){
@@ -287,14 +310,85 @@
 			console.log(activeUserDirectory);
 			setActiveUserDirectory(activeUserDirectory);
 
-			clearTimeout(updateFilesListTimeout);
-			updateFilesList();
+			forceUpdate()
+		}
+
+		function deleteFile(fileName){
+			deleteFileOrDirectory(fileName, "file")
+		}
+
+		function deleteFileOrDirectory(filename, fileOrDirectory){
+			var credentials = getCredentials();
+			var activeUserDirectory = getActiveUserDirectory();
+			var path;
+
+			if(fileOrDirectory == "directory"){
+				path = getContextPath()+"/rest/userDirectory/";
+			}else{
+				path = getContextPath()+"/rest/userFile/";
+			}
+			path += credentials.password+"/"+credentials.email+"/"+activeUserDirectory+filename;;
+
+			var xmlHttpRequest = new XMLHttpRequest();
+			xmlHttpRequest.open("DELETE", path, true);
+			xmlHttpRequest.onreadystatechange = function(){
+				if(xmlHttpRequest.readyState === 4){
+					forceUpdate();
+				}
+			}
+
+			var csrfData = getCsrfToken();
+			xmlHttpRequest.setRequestHeader("X-CSRF-TOKEN", csrfData.token);
+			xmlHttpRequest.send(null);
+		}
+
+		function deleteDirectory(dirName){
+			deleteFileOrDirectory(dirName, "directory");
+		}
+
+		function createDirectory(dirName){
+			var credentials = getCredentials();
+			var activeUserDirectory = getActiveUserDirectory();
+			var path = getContextPath()+"/rest/userDirectory/"+credentials.password+"/"+credentials.email+"/"+activeUserDirectory+dirName;
+			console.log(path);
+
+			var xmlHttpRequest = new XMLHttpRequest();
+			xmlHttpRequest.open("POST", path, true);
+			xmlHttpRequest.onreadystatechange = function(){
+				if(xmlHttpRequest.readyState === 4){
+					forceUpdate();
+				}
+			}
+			var csrfData = getCsrfToken();
+			xmlHttpRequest.setRequestHeader("X-CSRF-TOKEN", csrfData.token);
+			xmlHttpRequest.send(null);
+		}
+
+		function uploadFile(fileDomElement){
+			var xmlHttpRequest = new XMLHttpRequest();
+			var activeUserDirectory = getActiveUserDirectory();
+			var credentials = getCredentials();
+			var contextPath = getContextPath();
+			var csrfData = getCsrfToken();
+
+			var formData = new FormData();
+			var fileName = fileDomElement.files[0].name;
+			formData.set("file", fileDomElement.files[0]);
+
+			var requestPath = contextPath+"/rest/userFile/"+credentials.password+"/"+credentials.email+"/"+activeUserDirectory+fileName;
+			xmlHttpRequest.open("POST", requestPath, true);
+			xmlHttpRequest.setRequestHeader("X-CSRF-TOKEN", csrfData.token);
+			xmlHttpRequest.onreadystatechange = function(){
+				if(xmlHttpRequest.readyState === 4){
+					console.log(xmlHttpRequest.responseText);
+				}
+			}
+			xmlHttpRequest.send(formData);
 		}
 
 		function showChildFolder(childDirectoryName){
 			setActiveUserDirectory(getActiveUserDirectory()+childDirectoryName+"/");
-			clearTimeout(updateFilesListTimeout);
-			updateFilesList();	
+			forceUpdate();	
 		}
 
 		function init(){
@@ -322,7 +416,7 @@
 
 				<div class="input-group">
 					<span class="input-group-addon">Current directory</span>
-					<p id="activeUserDirectoryInput" activeUserDirectory="" class="form-control">
+					<p id="activeUserDirectoryInput" class="form-control"></p>
 					<div class="input-group-btn">
 						<button class="btn btn-default" id="upFolderButton" >
 							Up
@@ -332,7 +426,7 @@
 
 				<br />
 
-				<div class="well" id="filesListContainer" activeUserDirectory="" style="max-height: 70vh; overflow-y: scroll;">
+				<div class="well" id="filesListContainer" style="max-height: 70vh; overflow-y: scroll;">
 					
 				</div>
 			</div>
@@ -384,7 +478,7 @@
 
 					<div class="row" id="fileInfoBlock_actionButtons">
 						<div class="col-md-4">
-							<input  id="fileInfoBlock_deleteButton">
+							<button  id="fileInfoBlock_deleteButton" class="btn btn-md">Delete</button>
 						</div>
 
 						<div class="col-md-4">
@@ -392,11 +486,20 @@
 						</div>
 
 						<div class="col-md-4">
-							<button id="fileInfoBlock_downloadButton" class="btn btn-primary btn-lg">Download</button>
+							<button id="fileInfoBlock_downloadButton" class="btn btn-md">Download</button>
 						</div>
 					</div>
 				</div>
 			</div>
+	  	</div>
+
+	  	<div class="row">
+	  		<div class="col-md-8">
+	  			<input type="file" id="fileUploadItem" onchange="uploadFile(this)">
+	  		</div>
+
+	  		<div class="col-md-4">
+	  		</div>
 	  	</div>
 	  </div>
 </body>

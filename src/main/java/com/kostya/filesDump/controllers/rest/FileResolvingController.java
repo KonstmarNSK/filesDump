@@ -46,7 +46,6 @@ public class FileResolvingController {
 
     // TODO: 05.06.2017 find out something about urlencoded values
     // TODO: 05.06.2017 make server answer more informative
-    // TODO: 05.06.2017 add web interface (upload, download, delete, getFilesList etc)
     // TODO: 05.06.2017 fix tests (they must not depend on filesystem)
 
     @GetMapping("/rest/userFile/{userPassword}/{userEmail}/**")
@@ -149,7 +148,7 @@ public class FileResolvingController {
             return;
         }
 
-        String relationalFilePath = getRelationalResourcePath(request, "/rest/userFile/"+userPassword);
+        String relationalFilePath = getRelationalResourcePath(request, "/rest/userDirectory/"+userPassword);
         File requestedFile = fileResolver.getFile(relationalFilePath);
 
         requestedFile.delete();
@@ -177,7 +176,7 @@ public class FileResolvingController {
     }
 
     @PostMapping("/rest/userDirectory/{userPassword}/{userEmail}/**")
-    public void createDirectory(HttpServletRequest request, @PathVariable("userPassword") String userPassword, @PathVariable("userEmail") String username, @RequestParam("directoryName") String directoryName) throws IOException{
+    public void createDirectory(HttpServletRequest request, @PathVariable("userPassword") String userPassword, @PathVariable("userEmail") String username) throws IOException{
         if(!isValidUserCredentials(username, userPassword)){
             return;
         }
