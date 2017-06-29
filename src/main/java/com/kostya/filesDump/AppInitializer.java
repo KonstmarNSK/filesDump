@@ -2,8 +2,10 @@ package com.kostya.filesDump;
 
 import com.kostya.filesDump.configs.MainConfig;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.web.filter.CharacterEncodingFilter;
 import org.springframework.web.servlet.support.AbstractAnnotationConfigDispatcherServletInitializer;
 
+import javax.servlet.Filter;
 import javax.servlet.MultipartConfigElement;
 import javax.servlet.ServletRegistration;
 import java.io.IOException;

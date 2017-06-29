@@ -31,13 +31,17 @@
 	</script>
 	
 	<script>
-	function getActiveUserDirectory(){
-		return document.getElementById("activeUserDirectoryInput").innerHTML;
-	}
+		function getActiveUserDirectory(){
+			return document.getElementById("activeUserDirectoryInput").innerHTML;
+		}
 
-	function setActiveUserDirectory(newActiveDirectory){
-		document.getElementById("activeUserDirectoryInput").innerHTML = newActiveDirectory;
-	}
+		function getXmlHttpRequest(){
+			return new XMLHttpRequest();
+		}
+
+		function setActiveUserDirectory(newActiveDirectory){
+			document.getElementById("activeUserDirectoryInput").innerHTML = newActiveDirectory;
+		}
 
 		/*
 			returns list of FileInfo objects
@@ -52,13 +56,18 @@
 			}			
 		*/
 		function getFilesListFromServer(callback){
-			var xmlHttpRequest = new XMLHttpRequest();
+			var xmlHttpRequest = getXmlHttpRequest();
 			var credentials = getCredentials();			
 			var filesListContainer = document.getElementById("filesListContainer");
 			var activeUserDirectory = getActiveUserDirectory();
 			var filesList;
 
-			var path = getContextPath()+"/rest/userDirectory/"+credentials.password+"/"+credentials.email+"/"+activeUserDirectory;
+			var encodedPassword = encodeURIComponent(credentials.password);
+			var encodedEmail = encodeURIComponent(credentials.email);
+			var encodedPath = activeUserDirectory.split("/").map(function(str){return encodeURIComponent(str);}).join("/");
+
+
+			var path = getContextPath()+"/rest/userDirectory/"+encodedPassword+"/"+encodedEmail+"/"+encodedPath;
 			xmlHttpRequest.open("GET", path, true);
 			xmlHttpRequest.onreadystatechange = function(){
 				if(xmlHttpRequest.readyState === 4){
@@ -327,9 +336,14 @@
 			}else{
 				path = getContextPath()+"/rest/userFile/";
 			}
-			path += credentials.password+"/"+credentials.email+"/"+activeUserDirectory+filename;;
+			
+			var encodedPassword = encodeURIComponent(credentials.password);
+			var encodedEmail = encodeURIComponent(credentials.email);
+			var encodedPath = (activeUserDirectory+filename).split("/").map(function(str){return encodeURIComponent(str);}).join("/");
 
-			var xmlHttpRequest = new XMLHttpRequest();
+			path += encodedPassword+"/"+encodedEmail+"/"+encodedPath;
+
+			var xmlHttpRequest = getXmlHttpRequest();
 			xmlHttpRequest.open("DELETE", path, true);
 			xmlHttpRequest.onreadystatechange = function(){
 				if(xmlHttpRequest.readyState === 4){
@@ -349,10 +363,15 @@
 		function createDirectory(dirName){
 			var credentials = getCredentials();
 			var activeUserDirectory = getActiveUserDirectory();
-			var path = getContextPath()+"/rest/userDirectory/"+credentials.password+"/"+credentials.email+"/"+activeUserDirectory+dirName;
+
+			var encodedPassword = encodeURIComponent(credentials.password);
+			var encodedEmail = encodeURIComponent(credentials.email);
+			var encodedPath = (activeUserDirectory+dirName).split("/").map(function(str){return encodeURIComponent(str);}).join("/");
+
+			var path = getContextPath()+"/rest/userDirectory/"+encodedPassword+"/"+encodedEmail+"/"+encodedPath;
 			console.log(path);
 
-			var xmlHttpRequest = new XMLHttpRequest();
+			var xmlHttpRequest = getHttpRequest();
 			xmlHttpRequest.open("POST", path, true);
 			xmlHttpRequest.onreadystatechange = function(){
 				if(xmlHttpRequest.readyState === 4){
@@ -365,7 +384,7 @@
 		}
 
 		function uploadFile(fileDomElement){
-			var xmlHttpRequest = new XMLHttpRequest();
+			var xmlHttpRequest = getXmlHttpRequest();
 			var activeUserDirectory = getActiveUserDirectory();
 			var credentials = getCredentials();
 			var contextPath = getContextPath();
@@ -375,12 +394,18 @@
 			var fileName = fileDomElement.files[0].name;
 			formData.set("file", fileDomElement.files[0]);
 
-			var requestPath = contextPath+"/rest/userFile/"+credentials.password+"/"+credentials.email+"/"+activeUserDirectory+fileName;
+			var encodedPassword = encodeURIComponent(credentials.password);
+			var encodedEmail = encodeURIComponent(credentials.email);
+			var encodedPath = (activeUserDirectory+fileName).split("/").map(function(str){return encodeURIComponent(str);}).join("/");
+
+			var requestPath = contextPath+"/rest/userFile/"+encodedPassword+"/"+encodedEmail+"/"+encodedPath;
 			xmlHttpRequest.open("POST", requestPath, true);
 			xmlHttpRequest.setRequestHeader("X-CSRF-TOKEN", csrfData.token);
 			xmlHttpRequest.onreadystatechange = function(){
 				if(xmlHttpRequest.readyState === 4){
 					console.log(xmlHttpRequest.responseText);
+					fileDomElement.
+					forceUpdate();
 				}
 			}
 			xmlHttpRequest.send(formData);
