@@ -1,17 +1,26 @@
 package com.kostya.filesDump.utils;
 
+import com.kostya.filesDump.utils.fileResolverConfigs.ProdConfig;
+import com.kostya.filesDump.utils.fileResolverConfigs.TestConfig;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
+import org.springframework.test.context.ContextConfiguration;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
 
 /**
  * Created by Костя on 01.06.2017.
  */
 @Component
-@PropertySource("classpath:/properties/global.properties")
+@ContextConfiguration(classes = {ProdConfig.class, TestConfig.class})
 public class FileResolver {
     @Autowired
     Environment environment;
@@ -54,5 +63,16 @@ public class FileResolver {
         return userRootDirectory;
     }
 
+    public long getFileCreationTime(File file){
+        Path path = Paths.get(file.getAbsolutePath());
+
+        BasicFileAttributes view = null;
+        try {
+            view = Files.getFileAttributeView(path, BasicFileAttributeView.class).readAttributes();
+        }catch (IOException e){
+            throw new RuntimeException(e);
+        }
+        return view.creationTime().toMillis();
+    }
 
 }

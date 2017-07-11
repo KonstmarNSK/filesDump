@@ -33,10 +33,9 @@ public class DBTest {
 
     @Before
     public void setMockMvc(){
-        mockMvc = MockMvcBuilders.webAppContextSetup(applicationContext).apply(SecurityMockMvcConfigurers.springSecurity()).build();
+        mockMvc = MockMvcBuilders.webAppContextSetup(applicationContext).build();
     }
 
-    @WithMockUser
     @Test
     public void createUser(){
         User newUser = new User();

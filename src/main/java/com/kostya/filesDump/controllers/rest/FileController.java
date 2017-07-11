@@ -5,25 +5,22 @@ import com.kostya.filesDump.utils.ControllersUtils;
 import com.kostya.filesDump.utils.FileResolver;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URLDecoder;
-import java.net.URLEncoder;
 
 /**
  * Created by Костя on 26.06.2017.
  */
 @Controller
-public class GetFileController {
+@RequestMapping("/rest/userFile/{userPassword}/{userEmail}/**")
+public class FileController {
     @Autowired
     FileResolver fileResolver;
 
@@ -33,7 +30,7 @@ public class GetFileController {
     @Autowired
     ControllersUtils contollersUtils;
 
-    @GetMapping("/rest/userFile/{userPassword}/{userEmail}/**")
+    @GetMapping
     public void getFile(HttpServletRequest request, HttpServletResponse response, @PathVariable("userPassword") String rawUserPassword, @PathVariable("userEmail") String rawUsername) throws IOException {
         System.out.println("raw servlet path: "+request.getServletPath());
         System.out.println("servlet path: "+URLDecoder.decode(request.getServletPath(), "UTF-8"));
@@ -42,7 +39,6 @@ public class GetFileController {
 
         String username = URLDecoder.decode(rawUsername, "UTF-8");
         String password = URLDecoder.decode(rawUserPassword, "UTF-8");
-
 
         if(!contollersUtils.isValidUserCredentials(username, password)){
             return;
@@ -65,6 +61,46 @@ public class GetFileController {
         if(!requestedFile.isDirectory()){
             returnFile(response, requestedFile);
         }
+    }
+
+    @PostMapping
+    public void postFile(HttpServletRequest request, @PathVariable("userPassword") String rawUserPassword, @PathVariable("userEmail") String rawUsername, @RequestParam("file") MultipartFile multipartFile) throws IOException {
+        String username = URLDecoder.decode(rawUsername, "UTF-8");
+        String password = URLDecoder.decode(rawUserPassword, "UTF-8");
+
+        if(!contollersUtils.isValidUserCredentials(username, password)){
+            return;
+        }
+
+        String rawRelationalFilePath = contollersUtils.getRelationalResourcePath(request, "/rest/userFile/"+rawUserPassword);
+        String relationalPath = URLDecoder.decode(rawRelationalFilePath, "UTF-8");
+        File requestedFile = fileResolver.getFile(relationalPath);
+
+        if(!requestedFile.getParentFile().exists()){
+            return;
+        }
+
+        if(!requestedFile.exists()){
+            requestedFile.createNewFile();
+        }
+
+        multipartFile.transferTo(requestedFile);
+    }
+
+    @DeleteMapping
+    public  void deleteFile(HttpServletRequest request, @PathVariable("userPassword") String rawUserPassword, @PathVariable("userEmail") String rawUsername) throws UnsupportedEncodingException {
+        String username = URLDecoder.decode(rawUsername, "UTF-8");
+        String password = URLDecoder.decode(rawUserPassword, "UTF-8");
+
+        if(!contollersUtils.isValidUserCredentials(username, password)){
+            return;
+        }
+
+        String rawRelationalFilePath = contollersUtils.getRelationalResourcePath(request, "/rest/userFile/"+rawUserPassword);
+        String relationalPath = URLDecoder.decode(rawRelationalFilePath, "UTF-8");
+        File requestedFile = fileResolver.getFile(relationalPath);
+
+        requestedFile.delete();
     }
 
     private void returnFile(HttpServletResponse response, File file) throws IOException{
