@@ -56,11 +56,8 @@ public class DirectoryController {
         File requestedFile = fileResolver.getFile(relationalPath);
 
         System.out.println("requestedFile: "+requestedFile.getAbsolutePath());
-        if(!requestedFile.getParentFile().exists()){
-            return;
-        }
 
-        requestedFile.mkdir();
+        requestedFile.mkdirs();
     }
 
     @DeleteMapping
@@ -76,7 +73,7 @@ public class DirectoryController {
         String relationalPath = URLDecoder.decode(rawRelationalFilePath, "UTF-8");
         File requestedFile = fileResolver.getFile(relationalPath);
 
-        requestedFile.delete();
+        deleteDirectory(requestedFile);
     }
 
     @GetMapping
@@ -115,6 +112,17 @@ public class DirectoryController {
         }
 
         return result;
+    }
+
+    private void deleteDirectory(File directory){
+        for(File fileOrDirectory: directory.listFiles()){
+            if(fileOrDirectory.isDirectory()){
+                deleteDirectory(fileOrDirectory);
+            }else {
+                fileOrDirectory.delete();
+            }
+        }
+        directory.delete();
     }
 
     private class FileInfo{

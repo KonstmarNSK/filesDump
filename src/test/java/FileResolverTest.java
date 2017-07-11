@@ -142,6 +142,9 @@ public class FileResolverTest {
 
     @After
     public void deleteBaseTestDirectory(){
-        new File(env.getProperty("baseDirectoryPath")).delete();
+        if(env.getProperty("createNotExistingPath", Boolean.class)) {
+            new File(env.getProperty("baseDirectoryPath")).delete();
+            new File(env.getProperty("tmpStorageForMultipartFiles")).delete();
+        }
     }
 }

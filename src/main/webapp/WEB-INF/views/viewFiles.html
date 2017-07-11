@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
 	<link rel="stylesheet" href="../resources/bootstrap/css/bootstrap.css" data-th-href="@{/resources/bootstrap/css/bootstrap.css}" type="text/css" />
-    <title>auth</title>
-	
+    <title>Files</title>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+	<script data-th-src="@{/resources/bootstrap/js/bootstrap.min.js}"></script>
+
 	<script th:inline="javascript">
 		/*<![CDATA[*/
 		function getCredentials(){
@@ -371,7 +374,7 @@
 			var path = getContextPath()+"/rest/userDirectory/"+encodedPassword+"/"+encodedEmail+"/"+encodedPath;
 			console.log(path);
 
-			var xmlHttpRequest = getHttpRequest();
+			var xmlHttpRequest = getXmlHttpRequest();
 			xmlHttpRequest.open("POST", path, true);
 			xmlHttpRequest.onreadystatechange = function(){
 				if(xmlHttpRequest.readyState === 4){
@@ -507,7 +510,7 @@
 						</div>
 
 						<div class="col-md-4">
-							<input  id="fileInfoBlock_shareButton">
+							<!-- <input  id="fileInfoBlock_shareButton"> -->
 						</div>
 
 						<div class="col-md-4">
@@ -516,16 +519,43 @@
 					</div>
 				</div>
 			</div>
-	  	</div>
+		</div>
 
 	  	<div class="row">
 	  		<div class="col-md-8">
-	  			<input type="file" id="fileUploadItem" onchange="uploadFile(this)">
+	  			<input type="file" id="fileUploadItem" onchange="uploadFile(this)"><br />
+
+	  			<button type="button" class="btn btn-info btn-sm" data-toggle="modal" data-target="#create_new_directory_modal">Create new directory</button>
 	  		</div>
 
 	  		<div class="col-md-4">
 	  		</div>
 	  	</div>
-	  </div>
-</body>
+
+  	</div>
+
+
+	<!-- Modal -->
+	<div id="create_new_directory_modal" class="modal">
+		<div class="modal-dialog">
+
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">&times;</button>
+					<h4 class="modal-title">Create directory</h4>
+				</div>
+				<div class="modal-body">
+					<p id="modal_full_directory_name_label"></p>
+					<input id="create_new_directory_input" placeholder="Directory name" onkeypress="document.getElementById('modal_full_directory_name_label').innerHTML = getActiveUserDirectory()+this.innerHTML;">
+					<button type="button" class="btn btn-default" onclick="createDirectory(document.getElementById('create_new_directory_input').value);">Create</button>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+				</div>
+			</div>
+
+		</div>
+	</div>
+
+	</body>
 </html>
